@@ -19,3 +19,7 @@ class BlogModel(BaseModel):
     published: bool
     verified: Optional[bool]=False
     img: Optional[Image]=None
+
+class TestException(Exception):
+    def __init__(self,name:str):
+        self.name=name 

@@ -1,5 +1,5 @@
-from fastapi import APIRouter, status, Response,Query,Body,Path
-from models import BlogType
+from fastapi import APIRouter, status, Response,Query,Body,Path,HTTPException,Header,Cookie,Form
+from models import BlogType,TestException
 from typing import Optional,List,Dict  
 from models import BlogModel
 
@@ -27,6 +27,22 @@ router=APIRouter(prefix='/blog')
          response_description='All blogs fetched successfully')
 def all_blogs(pages:int ,limit: int=10 , published: bool=True, verified:Optional[bool]=None) -> dict: 
     return {'data': 'All blogs', 'Total Pages': pages, 'Limit': limit, 'Published': published, 'Verified': verified}
+
+
+#custom response
+#custom header ( can see on UI threw inspect element)
+#cookie 
+@router.get('/allTypes',tags=['Blogs'])
+def all_types(res:Response,
+              custom_header: Optional[List[str]]=Header(None),
+              my_cookie: Optional[str]=Cookie(None)): # get cookie (that is stored on client side with key as 'my_cookie')
+    types = [type.name for type in BlogType]
+    # converting list to string
+    data=" ".join(types)
+    response=Response(content=data,media_type='text/plain')
+    response.set_cookie(key="Name",value="Harsh") #set cookie
+    return response # response type is text
+    # various media_types are : xml, text/plain, htmlfiles, streaming, etc
 
 
 
@@ -63,16 +79,20 @@ def blog_type(type: BlogType) -> dict:
 
 # status code concept
 # path parameter
+# custom exception
 @router.get('/{id}',
          tags=['Blogs']) 
 def read_blog(id: int,res:Response) -> dict: # type checking (behind the scenes, it uses pydantic library to check)
     if id>=10: 
         res.status_code=status.HTTP_404_NOT_FOUND
         return {'message': 'Blog not found'}
+    elif id==0: 
+        raise TestException(name='Harsh') 
     else:
         res.status_code=status.HTTP_200_OK
         return {'message':"Blog found",'blog_id': id} 
-    
+
+ 
 
 
 # --------------------Post Method---------------------
@@ -92,6 +112,9 @@ def create_blog_with_id(blog:BlogModel,id:int,res:Response,verified:Optional[boo
     if id<0:
         res.status_code=status.HTTP_400_BAD_REQUEST
         return {'message':'Invalid id'}
+    
+    if id>10: # similar as above
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail='Invaliddd id')
     else:
         res.status_code=status.HTTP_201_CREATED
         return{'data':blog,'id':id,'verified':verified}
@@ -114,4 +137,11 @@ def create_comment(blog:BlogModel,id:int,
                    version:Optional[List[float]]=Query(None)) : 
     return {'blog_id':id , 'comment_id':comment_id}
 
-   
+
+
+
+# Form -> type: application/x-www-form-urlencoded 
+# pip install python-multipart
+@router.post('/createForm',tags=['Blogs'])
+def form_creation(name:str=Form(...),age:int=Form(...)):
+    return {'name':name,'age':age} # return type is dict and content type is application/json
