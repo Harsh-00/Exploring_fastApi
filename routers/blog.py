@@ -1,7 +1,8 @@
-from fastapi import APIRouter, status, Response,Query,Body,Path,HTTPException,Header,Cookie,Form
+from fastapi import APIRouter, status, Response,Query,Body,Path,HTTPException,Header,Cookie,Form,Depends
 from models import BlogType,TestException
 from typing import Optional,List,Dict  
 from models import BlogModel
+from auth.oauth2 import oauth2_schema
 
 
 
@@ -32,10 +33,11 @@ def all_blogs(pages:int ,limit: int=10 , published: bool=True, verified:Optional
 #custom response
 #custom header ( can see on UI threw inspect element)
 #cookie 
-@router.get('/allTypes',tags=['Blogs'])
+@router.get('/allTypes',tags=['Blogs']) # token is used to authenticate the user
 def all_types(res:Response,
               custom_header: Optional[List[str]]=Header(None),
-              my_cookie: Optional[str]=Cookie(None)): # get cookie (that is stored on client side with key as 'my_cookie')
+              my_cookie: Optional[str]=Cookie(None), # get cookie (that is stored on client side with key as 'my_cookie')
+              token:str=Depends(oauth2_schema)):  
     types = [type.name for type in BlogType]
     # converting list to string
     data=" ".join(types)

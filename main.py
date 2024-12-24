@@ -1,5 +1,6 @@
 from fastapi import FastAPI,Request
-from routers import blog
+from routers import blog,user
+from auth import authentication
 from models import TestException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,8 +9,9 @@ from typing import List
 
 app = FastAPI()
 
+app.include_router(authentication.router)
+app.include_router(user.router)
 app.include_router(blog.router)
-
 
 @app.get("/")
 def read_root() -> dict:  # type hinting, tell the return type of this function
