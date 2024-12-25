@@ -1,8 +1,10 @@
-from fastapi import APIRouter, status, Response,Query,Body,Path,HTTPException,Header,Cookie,Form,Depends
+from fastapi import APIRouter, status, Response,Query,Body,Path,HTTPException,Header,Cookie,Form,Depends,BackgroundTasks
 from models import BlogType,TestException
 from typing import Optional,List,Dict  
 from models import BlogModel
 from auth.oauth2 import oauth2_schema
+import time
+import threading
 
 
 
@@ -93,11 +95,11 @@ def read_blog(id: int,res:Response) -> dict: # type checking (behind the scenes,
     else:
         res.status_code=status.HTTP_200_OK
         return {'message':"Blog found",'blog_id': id} 
+    
 
- 
 
 
-# --------------------Post Method---------------------
+# --------------------------Post Method-------------------------------
 # pydantic BaseModel is used to validate the request body
 # I have implemented BlogModel in models.py file ( check out )
 
@@ -147,3 +149,51 @@ def create_comment(blog:BlogModel,id:int,
 @router.post('/createForm',tags=['Blogs'])
 def form_creation(name:str=Form(...),age:int=Form(...)):
     return {'name':name,'age':age} # return type is dict and content type is application/json
+
+
+# -----------------------------------------------------------------------
+
+async def time_consuming_task():
+    time.sleep(5)
+    return 'Task Completed'
+
+@router.post('/checking',tags=['Blogs'])
+async def check():
+    # this will not block the main thread (as it is await), it will run in background but will not block the main thread and whole check function will still take 5 seconds but now order of execution will be different.
+
+    #without await -> execute time_consuming_task() and then execute return {'message':'Checking'} after 5 seconds
+    #with await -> execute return {'message':'Checking'} and then execute time_consuming_task() after 5 seconds but function will still be completed after 5 seconds so return will be done after 5 seconds.
+
+    await time_consuming_task() 
+    return {'message':'Checking'}
+
+# -----------------------------------------------------------------------
+# Background Task
+
+cancel_all=threading.Event()
+
+def task():
+    for i in range(50):
+        if cancel_all.is_set():
+            print('Task Cancelled')
+            return
+        time.sleep(1)
+        print('Task Running')
+    print('Task Completed')
+    
+# will run task in background
+@router.post('/background',tags=['Background'])
+def background_task(bt: BackgroundTasks):
+    # here task() will run in background and will not block the main thread and response will be returned immediately to frontend and task will be executed after return of response, here response wont wait for task to complete
+
+    cancel_all.clear()
+    bt.add_task(task)
+    return {'message':'Background Task Added'}
+
+# will cancel all background tasks
+@router.post('/cancel',tags=['Background'])
+def cancel_task():
+    cancel_all.set()
+    return {'message':'Task Cancelled'}
+
+# -----------------------------------------------------------------------
